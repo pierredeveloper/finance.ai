@@ -1,2 +1,45 @@
-# finance.ai
-An AI-powered Financial Accounting &amp; Analysis chatbot that helps users analyze financial statements, track business performance, forecast budgets, evaluate KPIs, manage accounting tasks, and gain data-driven financial insights. Built for students, analysts, accountants, entrepreneurs, and finance professionals.
+![imagealt](https://github.com/pierredeveloper/prime-mind-chatbot/blob/main/prime-mind-bot%20image%20for%20github.png?raw=true)
+
+finance.ai is an AI-powered Financial Accounting and Analysis chatbot built with Streamlit.  
+It helps users understand financial concepts, analyze financial statements, calculate ratios, build forecasts, and make data-driven financial decisions.
+
+## Features
+
+- Financial statement analysis
+- Accounting explanations
+- Ratio calculations
+- Budgeting & forecasting
+- Business performance insights
+- AI-powered financial assistant
+
+## Tech Stack
+
+- Python
+- Streamlit
+- OpenAI API
+
+## Installation
+
+```bash
+git clone https://github.com/yourusername/finance-ai.git
+cd finance-ai
+pip install -r requirements.txt
+```
+
+## Run the App
+
+```bash
+streamlit run app.py
+```
+
+## Environment Variables
+
+Create a `.env` file:
+
+```env
+OPENAI_API_KEY=your_api_key
+```
+
+## License
+
+MIT License
