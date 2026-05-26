@@ -15,7 +15,7 @@ load_dotenv()
 
 st.set_page_config(
     page_title="Finance AI",
-    page_icon="chatgpt_3.png",
+    page_icon="logo icon.png",
     layout="centered"
 )
 
