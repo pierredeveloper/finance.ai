@@ -14,12 +14,12 @@ from datetime import datetime
 load_dotenv()
 
 st.set_page_config(
-    page_title="Finance AI",
+    page_title="FinanceGPT",
     page_icon="logo icon.png",
     layout="centered"
 )
 
-st.title("Finance AI")
+st.title("FinanceGPT")
 
 # --------------------------------------------------
 # SYSTEM PROMPT (ChatGPT STYLE)
