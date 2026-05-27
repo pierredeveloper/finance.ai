@@ -1,4 +1,4 @@
-![imagealt](https://github.com/pierredeveloper/finance.ai/blob/main/finance%20ai%20image.png)
+![imagealt](https://github.com/pierredeveloper/finance.ai/blob/main/financegptlogo.png)
 
 finance.ai is an AI-powered Financial Accounting and Analysis chatbot built with Streamlit.  
 It helps users understand financial concepts, analyze financial statements, calculate ratios, build forecasts, and make data-driven financial decisions.
