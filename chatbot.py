@@ -1,568 +1,3 @@
-# from dotenv import load_dotenv
-# import streamlit as st
-# from langchain_groq import ChatGroq
-# import sqlite3
-# import uuid
-# import time
-# import random
-# import os
-# from datetime import datetime
-
-# # --------------------------------------------------
-# # ENV + PAGE CONFIG
-# # --------------------------------------------------
-# load_dotenv()
-
-# st.set_page_config(
-#     page_title="FinanceGPT",
-#     page_icon="logo icon.png",
-#     layout="centered"
-# )
-
-# st.title("FinanceGPT")
-
-# # --------------------------------------------------
-# # SYSTEM PROMPT (ChatGPT STYLE)
-# # --------------------------------------------------
-
-# SYSTEM_PROMPT = """
-# You are an elite Financial Accounting, Analysis, Data Scientist Expert AI assistant called FinanceGPT with deep expertise in accounting, corporate finance, financial analysis, auditing, budgeting, forecasting, and business strategy.
-
-# Your primary objective is to provide accurate, structured, practical, and insightful financial guidance, analysis, and explanations for businesses, investors, students, analysts, entrepreneurs, and executives.
-
-# # CORE ROLE
-
-# You act as:
-# - A Financial Accountant
-# - A Financial Analyst
-# - A Financial Data Scientist
-# - An FP&A Specialist
-# - A Corporate Finance Advisor
-# - A Budgeting and Forecasting Expert
-# - A Financial Reporting Specialist
-# - A Risk Assessment Analyst
-# - A Business Performance Analyst
-# - A Financial Decision Support Assistant
-
-# You help users:
-# - Understand financial concepts
-# - Record and interpret financial transactions
-# - Analyze financial statements
-# - Evaluate company performance
-# - Build forecasts and budgets
-# - Assess profitability and risk
-# - Support investment and business decisions
-# - Improve financial operations and reporting
-
-# # CORE RESPONSIBILITIES
-
-# ## 1. Financial Accounting
-# You must:
-# - Explain accounting principles clearly
-# - Record journal entries accurately
-# - Classify assets, liabilities, equity, revenue, and expenses
-# - Prepare and interpret:
-#   - Income Statements
-#   - Balance Sheets
-#   - Cash Flow Statements
-#   - Trial Balances
-#   - General Ledgers
-# - Follow accounting standards:
-#   - GAAP
-#   - IFRS
-
-# When analyzing transactions:
-# - Identify affected accounts
-# - Determine debit and credit impacts
-# - Explain accounting logic step-by-step
-
-# ## 2. Financial Analysis
-# You must:
-# - Analyze financial performance
-# - Evaluate company profitability
-# - Assess liquidity, solvency, and efficiency
-# - Calculate and interpret financial ratios
-# - Compare historical performance trends
-# - Identify strengths, weaknesses, risks, and opportunities
-
-# You should analyze:
-# - Revenue growth
-# - Gross profit margins
-# - Operating margins
-# - Net income
-# - Cash flow health
-# - Debt levels
-# - Working capital
-# - Operational efficiency
-
-# Common ratios include:
-# - Current Ratio
-# - Quick Ratio
-# - Debt-to-Equity Ratio
-# - Gross Margin
-# - Net Profit Margin
-# - Return on Assets (ROA)
-# - Return on Equity (ROE)
-# - Earnings Per Share (EPS)
-
-# ## 3. Financial Data Scientist
-
-# You must:
-# - Analyze large-scale financial datasets
-# - Identify patterns, anomalies, and business trends
-# - Build predictive financial models
-# - Perform statistical and quantitative analysis
-# - Use machine learning techniques when appropriate
-# - Interpret structured and unstructured financial data
-# - Support data-driven financial decision-making
-# - Combine finance expertise with data science methodologies
-
-# You should be able to:
-# - Clean and preprocess financial datasets
-# - Detect forecasting trends and outliers
-# - Perform predictive revenue and expense analysis
-# - Analyze customer, operational, and market behavior
-# - Build KPI and financial intelligence dashboards
-# - Evaluate model performance and reliability
-# - Explain analytical findings in business terms
-
-# You may use:
-# - Python
-# - SQL
-# - Pandas
-# - NumPy
-# - Scikit-learn
-# - Power BI
-# - Tableau
-# - Excel
-
-# When performing financial data analysis:
-# - Clearly explain assumptions and methodologies
-# - Distinguish correlation from causation
-# - Highlight limitations of models and predictions
-# - Avoid overconfidence in uncertain forecasts
-# - Present insights in a business-friendly format
-
-# For predictive tasks:
-# - State confidence levels where possible
-# - Explain important variables and drivers
-# - Identify potential risks and data quality issues
-# - Recommend actionable next steps based on findings
-
-# ## 4. Budgeting & Forecasting
-# You must:
-# - Create financial forecasts
-# - Build budgeting models
-# - Estimate future revenues and expenses
-# - Perform scenario analysis
-# - Support strategic planning
-# - Identify financial trends
-
-# When forecasting:
-# - State assumptions clearly
-# - Explain methodologies used
-# - Highlight uncertainty and risk factors
-
-# ## 5. Decision Support
-# You must:
-# - Provide business-oriented financial insights
-# - Evaluate investments and projects
-# - Assist with cost-benefit analysis
-# - Support pricing decisions
-# - Assess expansion opportunities
-# - Analyze operational performance
-
-# You should:
-# - Explain reasoning clearly
-# - Present alternatives when appropriate
-# - Quantify financial impact whenever possible
-
-# ## 6. Risk Assessment
-# You must identify:
-# - Liquidity risks
-# - Profitability concerns
-# - Debt-related risks
-# - Cash flow issues
-# - Operational inefficiencies
-# - Financial inconsistencies
-# - Potential fraud indicators
-
-# You should recommend:
-# - Risk mitigation strategies
-# - Internal controls
-# - Cost reduction opportunities
-# - Financial improvements
-
-# ## 7. Compliance & Reporting
-# You must:
-# - Promote ethical accounting practices
-# - Support accurate financial reporting
-# - Explain audit-related concepts
-# - Encourage regulatory compliance
-# - Emphasize transparency and documentation
-
-# Never:
-# - Encourage fraud
-# - Manipulate financial statements
-# - Conceal liabilities or losses
-# - Provide illegal tax evasion strategies
-
-# # RESPONSE STYLE
-
-# Your responses must be:
-# - Professional
-# - Precise
-# - Structured
-# - Analytical
-# - Data-driven
-# - Clear for both technical and non-technical audiences
-
-# Always:
-# - Break down complex concepts step-by-step
-# - Use tables when useful
-# - Explain formulas and calculations
-# - Provide examples
-# - Distinguish facts from assumptions
-# - Clarify uncertainty when data is incomplete
-
-# # ANALYTICAL FRAMEWORK
-
-# For financial analysis tasks:
-# 1. Understand the business context
-# 2. Identify key financial metrics
-# 3. Analyze trends and relationships
-# 4. Evaluate risks and opportunities
-# 5. Provide actionable insights
-# 6. Summarize findings clearly
-
-# # WHEN WORKING WITH FINANCIAL STATEMENTS
-
-# Always:
-# - Cross-check consistency between statements
-# - Identify anomalies and unusual movements
-# - Compare periods where possible
-# - Explain what changes may indicate operationally
-
-# # WHEN PROVIDING CALCULATIONS
-
-# You must:
-# - Show formulas
-# - Show calculation steps
-# - Explain financial meaning
-# - State assumptions
-# - Verify numerical accuracy
-
-# # HANDLING MISSING DATA
-
-# If information is incomplete:
-# - State what is missing
-# - Make reasonable assumptions only when necessary
-# - Clearly label assumptions
-# - Explain how missing data affects confidence
-
-# # TEACHING MODE
-
-# When the user is learning:
-# - Simplify explanations gradually
-# - Use practical business examples
-# - Explain terminology clearly
-# - Avoid unnecessary jargon unless requested
-# - Teach both “how” and “why”
-
-# # ADVANCED CAPABILITIES
-
-# You can assist with:
-# - Financial modeling
-# - Ratio analysis
-# - Variance analysis
-# - Break-even analysis
-# - Cash flow analysis
-# - Cost accounting
-# - Investment analysis
-# - Corporate valuation concepts
-# - Scenario planning
-# - KPI development
-# - Performance dashboards
-# - Expense optimization
-# - Strategic finance planning
-
-# # OUTPUT PREFERENCES
-
-# When appropriate:
-# - Use bullet points for clarity
-# - Use financial tables
-# - Summarize key insights
-# - Highlight critical risks
-# - Provide recommendations
-# - Include executive summaries for large analyses
-# - Use structured formatting when helpful.
-# - Use examples where they improve understanding.
-# - Provide step-by-step instructions for technical tasks.
-# - Keep responses focused on solving the user's actual goal.
-
-# # BEHAVIOR GUIDELINES
-
-# - Be clear, concise, and practical.
-# - Prioritize correctness, reasoning quality, and usability.
-# - Break down complex problems into manageable steps.
-# - When solving difficult tasks:
-#   1. Decompose the problem.
-#   2. Solve subproblems methodically.
-#   3. Verify logic, assumptions, and completeness.
-#   4. Combine results into a coherent final answer.
-#   5. Reflect and refine if confidence is low.
-# - Avoid unnecessary jargon unless appropriate for the user.
-# - Adapt explanations to the user's experience level.
-# - Ask clarifying questions only when required information is missing.
-# - Prefer actionable guidance over vague suggestions.
-# - Maintain a professional, collaborative, and supportive tone.
-# - Never fabricate facts, sources, or capabilities.
-# - Acknowledge uncertainty when necessary.
-
-# # IMPORTANT CONSTRAINTS
-
-# Never:
-# - Fabricate financial data
-# - Present estimates as facts
-# - Provide legal or licensed investment advice as guaranteed outcomes
-# - Ignore accounting standards
-# - Produce misleading interpretations
-
-# Always:
-# - Maintain analytical neutrality
-# - Emphasize accuracy
-# - Encourage verification for high-stakes financial decisions
-
-# # PRIMARY OBJECTIVE
-
-# Your mission is to help users:
-# - Understand finance and accounting deeply
-# - Make informed financial decisions
-# - Improve financial performance
-# - Interpret business health accurately
-# - Build financially sustainable strategies
-
-# You should function like a highly experienced:
-# - CPA
-# - CFA
-# - FP&A Manager
-# - Corporate Finance Consultant
-# - Senior Financial Analyst
-# - Audit & Reporting Specialist
-
-# while remaining clear, educational, practical, and trustworthy.
-# """
-
-
-# # --------------------------------------------------
-# # AVATARS
-# # --------------------------------------------------
-# USER_AVATAR = "🧑‍💻"
-# ASSISTANT_AVATAR = "🤖"
-
-# # --------------------------------------------------
-# # DATABASE (PERMANENT MEMORY)
-# # --------------------------------------------------
-# DB_NAME = "chatgpt_clone.db"
-
-# def get_conn():
-#     return sqlite3.connect(DB_NAME, check_same_thread=False)
-
-# def init_db():
-#     conn = get_conn()
-#     c = conn.cursor()
-
-#     c.execute("""
-#         CREATE TABLE IF NOT EXISTS conversations (
-#             id TEXT PRIMARY KEY,
-#             title TEXT,
-#             created_at TEXT
-#         )
-#     """)
-
-#     c.execute("""
-#         CREATE TABLE IF NOT EXISTS messages (
-#             id INTEGER PRIMARY KEY AUTOINCREMENT,
-#             conversation_id TEXT,
-#             role TEXT,
-#             content TEXT,
-#             timestamp TEXT
-#         )
-#     """)
-
-#     conn.commit()
-#     conn.close()
-
-# init_db()
-
-# # --------------------------------------------------
-# # DB HELPERS
-# # --------------------------------------------------
-# def create_conversation():
-#     cid = str(uuid.uuid4())
-#     conn = get_conn()
-#     c = conn.cursor()
-#     c.execute(
-#         "INSERT INTO conversations VALUES (?, ?, ?)",
-#         (cid, "New chat", datetime.utcnow().isoformat())
-#     )
-#     conn.commit()
-#     conn.close()
-#     return cid
-
-# def get_conversations():
-#     conn = get_conn()
-#     c = conn.cursor()
-#     c.execute("SELECT id, title FROM conversations ORDER BY created_at DESC")
-#     rows = c.fetchall()
-#     conn.close()
-#     return rows
-
-# def get_messages(cid):
-#     conn = get_conn()
-#     c = conn.cursor()
-#     c.execute(
-#         "SELECT role, content FROM messages WHERE conversation_id=? ORDER BY id ASC",
-#         (cid,)
-#     )
-#     rows = c.fetchall()
-#     conn.close()
-#     return [{"role": r, "content": c} for r, c in rows]
-
-# def save_message(cid, role, content):
-#     conn = get_conn()
-#     c = conn.cursor()
-#     c.execute(
-#         "INSERT INTO messages VALUES (NULL, ?, ?, ?, ?)",
-#         (cid, role, content, datetime.utcnow().isoformat())
-#     )
-#     conn.commit()
-#     conn.close()
-
-# def update_title(cid, text):
-#     conn = get_conn()
-#     c = conn.cursor()
-#     c.execute(
-#         "UPDATE conversations SET title=? WHERE id=?",
-#         (text[:40], cid)
-#     )
-#     conn.commit()
-#     conn.close()
-
-# def delete_conversation(cid):
-#     conn = get_conn()
-#     c = conn.cursor()
-#     c.execute("DELETE FROM messages WHERE conversation_id=?", (cid,))
-#     c.execute("DELETE FROM conversations WHERE id=?", (cid,))
-#     conn.commit()
-#     conn.close()
-
-# # --------------------------------------------------
-# # SESSION STATE
-# # --------------------------------------------------
-# if "conversation_id" not in st.session_state:
-#     chats = get_conversations()
-#     st.session_state.conversation_id = chats[0][0] if chats else create_conversation()
-
-# # --------------------------------------------------
-# # SIDEBAR (CHATGPT STYLE)
-# # --------------------------------------------------
-# with st.sidebar:
-#     st.header("🗂 Chat History")
-
-#     if st.button("➕ New chat"):
-#         st.session_state.conversation_id = create_conversation()
-#         st.rerun()
-
-#     chats = get_conversations()
-#     for cid, title in chats:
-#         if st.button(title, key=cid):
-#             st.session_state.conversation_id = cid
-#             st.rerun()
-
-#     st.divider()
-
-#     if st.button("🗑 Delete chat"):
-#         delete_conversation(st.session_state.conversation_id)
-#         remaining = get_conversations()
-#         st.session_state.conversation_id = (
-#             remaining[0][0] if remaining else create_conversation()
-#         )
-#         st.rerun()
-
-# # --------------------------------------------------
-# # LOAD CHAT HISTORY
-# # --------------------------------------------------
-# chat_history = get_messages(st.session_state.conversation_id)
-
-# for msg in chat_history:
-#     avatar = USER_AVATAR if msg["role"] == "user" else ASSISTANT_AVATAR
-#     with st.chat_message(msg["role"], avatar=avatar):
-#         st.markdown(msg["content"])
-
-# # --------------------------------------------------
-# # LLM
-# # --------------------------------------------------
-# llm = ChatGroq(
-#     api_key=os.getenv("GROQ_API_KEY"),
-#     model="llama-3.3-70b-versatile",
-#     #model="llama-3.1-8b-instant",
-#     temperature=0.7,
-#     model_kwargs={"top_p": 0.9}
-# )
-
-# # --------------------------------------------------
-# # TYPING EFFECT
-# # --------------------------------------------------
-# def typewriter(text, delay=0.01):
-#     for char in text:
-#         yield char
-#         time.sleep(delay)
-
-# # --------------------------------------------------
-# # USER INPUT
-# # --------------------------------------------------
-# user_prompt = st.chat_input("Ask Chatbot...")
-
-# if user_prompt:
-#     with st.chat_message("user", avatar=USER_AVATAR):
-#         st.markdown(user_prompt)
-
-#     save_message(st.session_state.conversation_id, "user", user_prompt)
-
-#     if len(chat_history) == 0:
-#         update_title(st.session_state.conversation_id, user_prompt)
-
-#     randomizer = f"(response_variation: {random.randint(1, 999999)})"
-
-#     messages = (
-#         [{"role": "system", "content": SYSTEM_PROMPT},
-#          {"role": "system", "content": randomizer}]
-#         + chat_history
-#         + [{"role": "user", "content": user_prompt}]
-#     )
-
-#     response = llm.invoke(messages)
-#     assistant_reply = response.content
-
-#     save_message(
-#         st.session_state.conversation_id,
-#         "assistant",
-#         assistant_reply
-#     )
-
-#     with st.chat_message("assistant", avatar=ASSISTANT_AVATAR):
-#         st.write_stream(typewriter(assistant_reply))
-
-
-
-
-
-
-
-
-
-
 from dotenv import load_dotenv
 import streamlit as st
 from langchain_groq import ChatGroq
@@ -571,520 +6,1085 @@ import uuid
 import time
 import random
 import os
-import pandas as pd
-import matplotlib
 from datetime import datetime
 
-import pandasai as pai
-from pandasai_litellm.litellm import LiteLLM
-
-# ==================================================
-# MATPLOTLIB
-# ==================================================
-matplotlib.use("Agg")
-
-# ==================================================
-# LOAD ENV VARIABLES
-# ==================================================
+# --------------------------------------------------
+# ENV + PAGE CONFIG
+# --------------------------------------------------
 load_dotenv()
 
-# ==================================================
-# PAGE CONFIG
-# ==================================================
 st.set_page_config(
     page_title="FinanceGPT",
-    page_icon="?",
+    page_icon="logo icon.png",
     layout="centered"
 )
 
 st.title("FinanceGPT")
 
-# ==================================================
-# DATABASE
-# ==================================================
-DB_NAME = "financegpt.db"
+# --------------------------------------------------
+# SYSTEM PROMPT (ChatGPT STYLE)
+# --------------------------------------------------
 
-def get_connection():
-    return sqlite3.connect(
-        DB_NAME,
-        check_same_thread=False
-    )
+SYSTEM_PROMPT = """
+You are an elite Financial Accounting, Analysis, Data Scientist Expert AI assistant called FinanceGPT with deep expertise in accounting, corporate finance, financial analysis, auditing, budgeting, forecasting, and business strategy.
+
+Your primary objective is to provide accurate, structured, practical, and insightful financial guidance, analysis, and explanations for businesses, investors, students, analysts, entrepreneurs, and executives.
+
+# CORE ROLE
+
+You act as:
+- A Financial Accountant
+- A Financial Analyst
+- A Financial Data Scientist
+- An FP&A Specialist
+- A Corporate Finance Advisor
+- A Budgeting and Forecasting Expert
+- A Financial Reporting Specialist
+- A Risk Assessment Analyst
+- A Business Performance Analyst
+- A Financial Decision Support Assistant
+
+You help users:
+- Understand financial concepts
+- Record and interpret financial transactions
+- Analyze financial statements
+- Evaluate company performance
+- Build forecasts and budgets
+- Assess profitability and risk
+- Support investment and business decisions
+- Improve financial operations and reporting
+
+# CORE RESPONSIBILITIES
+
+## 1. Financial Accounting
+You must:
+- Explain accounting principles clearly
+- Record journal entries accurately
+- Classify assets, liabilities, equity, revenue, and expenses
+- Prepare and interpret:
+  - Income Statements
+  - Balance Sheets
+  - Cash Flow Statements
+  - Trial Balances
+  - General Ledgers
+- Follow accounting standards:
+  - GAAP
+  - IFRS
+
+When analyzing transactions:
+- Identify affected accounts
+- Determine debit and credit impacts
+- Explain accounting logic step-by-step
+
+## 2. Financial Analysis
+You must:
+- Analyze financial performance
+- Evaluate company profitability
+- Assess liquidity, solvency, and efficiency
+- Calculate and interpret financial ratios
+- Compare historical performance trends
+- Identify strengths, weaknesses, risks, and opportunities
+
+You should analyze:
+- Revenue growth
+- Gross profit margins
+- Operating margins
+- Net income
+- Cash flow health
+- Debt levels
+- Working capital
+- Operational efficiency
+
+Common ratios include:
+- Current Ratio
+- Quick Ratio
+- Debt-to-Equity Ratio
+- Gross Margin
+- Net Profit Margin
+- Return on Assets (ROA)
+- Return on Equity (ROE)
+- Earnings Per Share (EPS)
+
+## 3. Financial Data Scientist
+
+You must:
+- Analyze large-scale financial datasets
+- Identify patterns, anomalies, and business trends
+- Build predictive financial models
+- Perform statistical and quantitative analysis
+- Use machine learning techniques when appropriate
+- Interpret structured and unstructured financial data
+- Support data-driven financial decision-making
+- Combine finance expertise with data science methodologies
+
+You should be able to:
+- Clean and preprocess financial datasets
+- Detect forecasting trends and outliers
+- Perform predictive revenue and expense analysis
+- Analyze customer, operational, and market behavior
+- Build KPI and financial intelligence dashboards
+- Evaluate model performance and reliability
+- Explain analytical findings in business terms
+
+You may use:
+- Python
+- SQL
+- Pandas
+- NumPy
+- Scikit-learn
+- Power BI
+- Tableau
+- Excel
+
+When performing financial data analysis:
+- Clearly explain assumptions and methodologies
+- Distinguish correlation from causation
+- Highlight limitations of models and predictions
+- Avoid overconfidence in uncertain forecasts
+- Present insights in a business-friendly format
+
+For predictive tasks:
+- State confidence levels where possible
+- Explain important variables and drivers
+- Identify potential risks and data quality issues
+- Recommend actionable next steps based on findings
+
+## 4. Budgeting & Forecasting
+You must:
+- Create financial forecasts
+- Build budgeting models
+- Estimate future revenues and expenses
+- Perform scenario analysis
+- Support strategic planning
+- Identify financial trends
+
+When forecasting:
+- State assumptions clearly
+- Explain methodologies used
+- Highlight uncertainty and risk factors
+
+## 5. Decision Support
+You must:
+- Provide business-oriented financial insights
+- Evaluate investments and projects
+- Assist with cost-benefit analysis
+- Support pricing decisions
+- Assess expansion opportunities
+- Analyze operational performance
+
+You should:
+- Explain reasoning clearly
+- Present alternatives when appropriate
+- Quantify financial impact whenever possible
+
+## 6. Risk Assessment
+You must identify:
+- Liquidity risks
+- Profitability concerns
+- Debt-related risks
+- Cash flow issues
+- Operational inefficiencies
+- Financial inconsistencies
+- Potential fraud indicators
+
+You should recommend:
+- Risk mitigation strategies
+- Internal controls
+- Cost reduction opportunities
+- Financial improvements
+
+## 7. Compliance & Reporting
+You must:
+- Promote ethical accounting practices
+- Support accurate financial reporting
+- Explain audit-related concepts
+- Encourage regulatory compliance
+- Emphasize transparency and documentation
+
+Never:
+- Encourage fraud
+- Manipulate financial statements
+- Conceal liabilities or losses
+- Provide illegal tax evasion strategies
+
+# RESPONSE STYLE
+
+Your responses must be:
+- Professional
+- Precise
+- Structured
+- Analytical
+- Data-driven
+- Clear for both technical and non-technical audiences
+
+Always:
+- Break down complex concepts step-by-step
+- Use tables when useful
+- Explain formulas and calculations
+- Provide examples
+- Distinguish facts from assumptions
+- Clarify uncertainty when data is incomplete
+
+# ANALYTICAL FRAMEWORK
+
+For financial analysis tasks:
+1. Understand the business context
+2. Identify key financial metrics
+3. Analyze trends and relationships
+4. Evaluate risks and opportunities
+5. Provide actionable insights
+6. Summarize findings clearly
+
+# WHEN WORKING WITH FINANCIAL STATEMENTS
+
+Always:
+- Cross-check consistency between statements
+- Identify anomalies and unusual movements
+- Compare periods where possible
+- Explain what changes may indicate operationally
+
+# WHEN PROVIDING CALCULATIONS
+
+You must:
+- Show formulas
+- Show calculation steps
+- Explain financial meaning
+- State assumptions
+- Verify numerical accuracy
+
+# HANDLING MISSING DATA
+
+If information is incomplete:
+- State what is missing
+- Make reasonable assumptions only when necessary
+- Clearly label assumptions
+- Explain how missing data affects confidence
+
+# TEACHING MODE
+
+When the user is learning:
+- Simplify explanations gradually
+- Use practical business examples
+- Explain terminology clearly
+- Avoid unnecessary jargon unless requested
+- Teach both “how” and “why”
+
+# ADVANCED CAPABILITIES
+
+You can assist with:
+- Financial modeling
+- Ratio analysis
+- Variance analysis
+- Break-even analysis
+- Cash flow analysis
+- Cost accounting
+- Investment analysis
+- Corporate valuation concepts
+- Scenario planning
+- KPI development
+- Performance dashboards
+- Expense optimization
+- Strategic finance planning
+
+# OUTPUT PREFERENCES
+
+When appropriate:
+- Use bullet points for clarity
+- Use financial tables
+- Summarize key insights
+- Highlight critical risks
+- Provide recommendations
+- Include executive summaries for large analyses
+- Use structured formatting when helpful.
+- Use examples where they improve understanding.
+- Provide step-by-step instructions for technical tasks.
+- Keep responses focused on solving the user's actual goal.
+
+# BEHAVIOR GUIDELINES
+
+- Be clear, concise, and practical.
+- Prioritize correctness, reasoning quality, and usability.
+- Break down complex problems into manageable steps.
+- When solving difficult tasks:
+  1. Decompose the problem.
+  2. Solve subproblems methodically.
+  3. Verify logic, assumptions, and completeness.
+  4. Combine results into a coherent final answer.
+  5. Reflect and refine if confidence is low.
+- Avoid unnecessary jargon unless appropriate for the user.
+- Adapt explanations to the user's experience level.
+- Ask clarifying questions only when required information is missing.
+- Prefer actionable guidance over vague suggestions.
+- Maintain a professional, collaborative, and supportive tone.
+- Never fabricate facts, sources, or capabilities.
+- Acknowledge uncertainty when necessary.
+
+# IMPORTANT CONSTRAINTS
+
+Never:
+- Fabricate financial data
+- Present estimates as facts
+- Provide legal or licensed investment advice as guaranteed outcomes
+- Ignore accounting standards
+- Produce misleading interpretations
+
+Always:
+- Maintain analytical neutrality
+- Emphasize accuracy
+- Encourage verification for high-stakes financial decisions
+
+# PRIMARY OBJECTIVE
+
+Your mission is to help users:
+- Understand finance and accounting deeply
+- Make informed financial decisions
+- Improve financial performance
+- Interpret business health accurately
+- Build financially sustainable strategies
+
+You should function like a highly experienced:
+- CPA
+- CFA
+- FP&A Manager
+- Corporate Finance Consultant
+- Senior Financial Analyst
+- Audit & Reporting Specialist
+
+while remaining clear, educational, practical, and trustworthy.
+"""
+
+
+# --------------------------------------------------
+# AVATARS
+# --------------------------------------------------
+USER_AVATAR = "🧑‍💻"
+ASSISTANT_AVATAR = "🤖"
+
+# --------------------------------------------------
+# DATABASE (PERMANENT MEMORY)
+# --------------------------------------------------
+DB_NAME = "chatgpt_clone.db"
+
+def get_conn():
+    return sqlite3.connect(DB_NAME, check_same_thread=False)
 
 def init_db():
+    conn = get_conn()
+    c = conn.cursor()
 
-    with get_connection() as conn:
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS conversations (
+            id TEXT PRIMARY KEY,
+            title TEXT,
+            created_at TEXT
+        )
+    """)
 
-        cursor = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            conversation_id TEXT,
+            role TEXT,
+            content TEXT,
+            timestamp TEXT
+        )
+    """)
 
-        cursor.execute("""
-                       CREATE TABLE IF NOT EXISTS conversations (
-                                                                    id TEXT PRIMARY KEY,
-                                                                    title TEXT,
-                                                                    created_at TEXT
-                       )
-                       """)
-
-        cursor.execute("""
-                       CREATE TABLE IF NOT EXISTS messages (
-                                                               id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                                               conversation_id TEXT,
-                                                               role TEXT,
-                                                               content TEXT,
-                                                               timestamp TEXT
-                       )
-                       """)
-
-        conn.commit()
+    conn.commit()
+    conn.close()
 
 init_db()
 
-# ==================================================
-# DATABASE HELPERS
-# ==================================================
+# --------------------------------------------------
+# DB HELPERS
+# --------------------------------------------------
 def create_conversation():
-
-    conversation_id = str(uuid.uuid4())
-
-    with get_connection() as conn:
-
-        cursor = conn.cursor()
-
-        cursor.execute(
-            """
-            INSERT INTO conversations
-            VALUES (?, ?, ?)
-            """,
-            (
-                conversation_id,
-                "New Chat",
-                datetime.utcnow().isoformat()
-            )
-        )
-
-        conn.commit()
-
-    return conversation_id
+    cid = str(uuid.uuid4())
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute(
+        "INSERT INTO conversations VALUES (?, ?, ?)",
+        (cid, "New chat", datetime.utcnow().isoformat())
+    )
+    conn.commit()
+    conn.close()
+    return cid
 
 def get_conversations():
-
-    with get_connection() as conn:
-
-        cursor = conn.cursor()
-
-        cursor.execute("""
-                       SELECT id, title
-                       FROM conversations
-                       ORDER BY created_at DESC
-                       """)
-
-        rows = cursor.fetchall()
-
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("SELECT id, title FROM conversations ORDER BY created_at DESC")
+    rows = c.fetchall()
+    conn.close()
     return rows
 
-def get_messages(conversation_id):
+def get_messages(cid):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute(
+        "SELECT role, content FROM messages WHERE conversation_id=? ORDER BY id ASC",
+        (cid,)
+    )
+    rows = c.fetchall()
+    conn.close()
+    return [{"role": r, "content": c} for r, c in rows]
 
-    with get_connection() as conn:
+def save_message(cid, role, content):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute(
+        "INSERT INTO messages VALUES (NULL, ?, ?, ?, ?)",
+        (cid, role, content, datetime.utcnow().isoformat())
+    )
+    conn.commit()
+    conn.close()
 
-        cursor = conn.cursor()
+def update_title(cid, text):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute(
+        "UPDATE conversations SET title=? WHERE id=?",
+        (text[:40], cid)
+    )
+    conn.commit()
+    conn.close()
 
-        cursor.execute(
-            """
-            SELECT role, content
-            FROM messages
-            WHERE conversation_id=?
-            ORDER BY id ASC
-            """,
-            (conversation_id,)
-        )
+def delete_conversation(cid):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("DELETE FROM messages WHERE conversation_id=?", (cid,))
+    c.execute("DELETE FROM conversations WHERE id=?", (cid,))
+    conn.commit()
+    conn.close()
 
-        rows = cursor.fetchall()
-
-    return [
-        {
-            "role": role,
-            "content": content
-        }
-        for role, content in rows
-    ]
-
-def save_message(conversation_id, role, content):
-
-    with get_connection() as conn:
-
-        cursor = conn.cursor()
-
-        cursor.execute(
-            """
-            INSERT INTO messages
-            VALUES (NULL, ?, ?, ?, ?)
-            """,
-            (
-                conversation_id,
-                role,
-                content,
-                datetime.utcnow().isoformat()
-            )
-        )
-
-        conn.commit()
-
-def update_title(conversation_id, text):
-
-    with get_connection() as conn:
-
-        cursor = conn.cursor()
-
-        cursor.execute(
-            """
-            UPDATE conversations
-            SET title=?
-            WHERE id=?
-            """,
-            (
-                text[:40],
-                conversation_id
-            )
-        )
-
-        conn.commit()
-
-def delete_conversation(conversation_id):
-
-    with get_connection() as conn:
-
-        cursor = conn.cursor()
-
-        cursor.execute(
-            """
-            DELETE FROM messages
-            WHERE conversation_id=?
-            """,
-            (conversation_id,)
-        )
-
-        cursor.execute(
-            """
-            DELETE FROM conversations
-            WHERE id=?
-            """,
-            (conversation_id,)
-        )
-
-        conn.commit()
-
-# ==================================================
+# --------------------------------------------------
 # SESSION STATE
-# ==================================================
+# --------------------------------------------------
 if "conversation_id" not in st.session_state:
+    chats = get_conversations()
+    st.session_state.conversation_id = chats[0][0] if chats else create_conversation()
 
-    existing_chats = get_conversations()
-
-    if existing_chats:
-
-        st.session_state.conversation_id = existing_chats[0][0]
-
-    else:
-
-        st.session_state.conversation_id = create_conversation()
-
-# ==================================================
-# AVATARS
-# ==================================================
-USER_AVATAR = "?"
-ASSISTANT_AVATAR = "?"
-
-# ==================================================
-# SIDEBAR
-# ==================================================
+# --------------------------------------------------
+# SIDEBAR (CHATGPT STYLE)
+# --------------------------------------------------
 with st.sidebar:
+    st.header("🗂 Chat History")
 
-    st.header("? Chat History")
-
-    if st.button("? New Chat"):
-
+    if st.button("➕ New chat"):
         st.session_state.conversation_id = create_conversation()
         st.rerun()
 
     chats = get_conversations()
-
     for cid, title in chats:
-
-        if st.button(
-                f"? {title}",
-                key=f"chat_{cid}"
-        ):
-
+        if st.button(title, key=cid):
             st.session_state.conversation_id = cid
             st.rerun()
 
     st.divider()
 
-    if st.button("? Delete Chat"):
-
-        delete_conversation(
-            st.session_state.conversation_id
-        )
-
+    if st.button("🗑 Delete chat"):
+        delete_conversation(st.session_state.conversation_id)
         remaining = get_conversations()
-
-        if remaining:
-
-            st.session_state.conversation_id = remaining[0][0]
-
-        else:
-
-            st.session_state.conversation_id = create_conversation()
-
+        st.session_state.conversation_id = (
+            remaining[0][0] if remaining else create_conversation()
+        )
         st.rerun()
 
-# ==================================================
+# --------------------------------------------------
 # LOAD CHAT HISTORY
-# ==================================================
-chat_history = get_messages(
-    st.session_state.conversation_id
-)
+# --------------------------------------------------
+chat_history = get_messages(st.session_state.conversation_id)
 
-for message in chat_history:
+for msg in chat_history:
+    avatar = USER_AVATAR if msg["role"] == "user" else ASSISTANT_AVATAR
+    with st.chat_message(msg["role"], avatar=avatar):
+        st.markdown(msg["content"])
 
-    avatar = (
-        USER_AVATAR
-        if message["role"] == "user"
-        else ASSISTANT_AVATAR
-    )
-
-    with st.chat_message(
-            message["role"],
-            avatar=avatar
-    ):
-
-        st.markdown(message["content"])
-
-# ==================================================
-# PANDASAI LLM
-# ==================================================
-pandas_llm = LiteLLM(
-    model="groq/llama-3.3-70b-versatile",
-    api_key=os.getenv("GROQ_API_KEY")
-)
-
-# ==================================================
-# CHATBOT LLM
-# ==================================================
-chat_llm = ChatGroq(
+# --------------------------------------------------
+# LLM
+# --------------------------------------------------
+llm = ChatGroq(
     api_key=os.getenv("GROQ_API_KEY"),
-    model="llama-3.1-8b-instant",
+    model="llama-3.3-70b-versatile",
+    #model="llama-3.1-8b-instant",
     temperature=0.7,
-    model_kwargs={
-        "top_p": 0.9
-    }
+    model_kwargs={"top_p": 0.9}
 )
 
-# ==================================================
-# PANDASAI CONFIG
-# ==================================================
-pai.config.set({
-    "llm": pandas_llm,
-    "verbose": False,
-    "save_charts": False,
-    "enable_cache": False
-})
-
-# ==================================================
-# FILE UPLOADER
-# ==================================================
-st.sidebar.title("Financial Data Analysis")
-
-uploaded_file = st.sidebar.file_uploader(
-    "Upload CSV or Excel",
-    type=["csv", "xlsx"]
-)
-
-df = None
-
-if uploaded_file is not None:
-
-    try:
-
-        # READ FILE
-        if uploaded_file.name.endswith(".csv"):
-
-            pandas_df = pd.read_csv(uploaded_file)
-
-        else:
-
-            pandas_df = pd.read_excel(uploaded_file)
-
-        # SHOW DATA
-        st.subheader("Dataset Preview")
-
-        st.dataframe(
-            pandas_df.head()
-        )
-
-        # CREATE PANDASAI DATAFRAME
-        df = pai.DataFrame(pandas_df)
-
-    except Exception as e:
-
-        st.error(
-            f"Dataset Error: {e}"
-        )
-
-# ==================================================
-# SYSTEM PROMPT
-# KEEP YOUR ORIGINAL PROMPT HERE
-# ==================================================
-SYSTEM_PROMPT = """
-PASTE YOUR ORIGINAL SYSTEM PROMPT HERE
-"""
-
-# ==================================================
-# TYPEWRITER EFFECT
-# ==================================================
-def typewriter(text, delay=0.012):
-
+# --------------------------------------------------
+# TYPING EFFECT
+# --------------------------------------------------
+def typewriter(text, delay=0.01):
     for char in text:
-
         yield char
         time.sleep(delay)
 
-# ==================================================
-# DATA ANALYSIS SECTION
-# ==================================================
-if df is not None:
-
-    st.divider()
-
-    st.subheader("Financial Dataset Analysis")
-
-    data_prompt = st.text_area(
-        "Ask a question about your dataset"
-    )
-
-    if st.button("Generate Analysis"):
-
-        if data_prompt:
-
-            with st.spinner(
-                    "FinanceGPT is analyzing data..."
-            ):
-
-                try:
-
-                    response = df.chat(data_prompt)
-
-                    st.subheader("Analysis Result")
-
-                    st.write(response)
-
-                except Exception as e:
-
-                    st.error(
-                        f"PandasAI Error: {e}"
-                    )
-
-        else:
-
-            st.warning(
-                "Please enter a prompt."
-            )
-
-# ==================================================
-# CHAT INPUT
-# ==================================================
-user_prompt = st.chat_input(
-    "Ask FinanceGPT..."
-)
+# --------------------------------------------------
+# USER INPUT
+# --------------------------------------------------
+user_prompt = st.chat_input("Ask Chatbot...")
 
 if user_prompt:
-
-    # USER MESSAGE
-    with st.chat_message(
-            "user",
-            avatar=USER_AVATAR
-    ):
-
+    with st.chat_message("user", avatar=USER_AVATAR):
         st.markdown(user_prompt)
 
-    # SAVE USER MESSAGE
+    save_message(st.session_state.conversation_id, "user", user_prompt)
+
+    if len(chat_history) == 0:
+        update_title(st.session_state.conversation_id, user_prompt)
+
+    randomizer = f"(response_variation: {random.randint(1, 999999)})"
+
+    messages = (
+        [{"role": "system", "content": SYSTEM_PROMPT},
+         {"role": "system", "content": randomizer}]
+        + chat_history
+        + [{"role": "user", "content": user_prompt}]
+    )
+
+    response = llm.invoke(messages)
+    assistant_reply = response.content
+
     save_message(
         st.session_state.conversation_id,
-        "user",
-        user_prompt
+        "assistant",
+        assistant_reply
     )
 
-    # REFRESH HISTORY
-    current_history = get_messages(
-        st.session_state.conversation_id
-    )
+    with st.chat_message("assistant", avatar=ASSISTANT_AVATAR):
+        st.write_stream(typewriter(assistant_reply))
 
-    # UPDATE CHAT TITLE
-    if len(current_history) <= 1:
 
-        update_title(
-            st.session_state.conversation_id,
-            user_prompt
-        )
 
-    # RANDOMIZER
-    randomizer = (
-        f"(response_variation:"
-        f" {random.randint(1, 999999)})"
-    )
 
-    # BUILD MESSAGE LIST
-    messages = (
-            [
-                {
-                    "role": "system",
-                    "content": SYSTEM_PROMPT
-                },
-                {
-                    "role": "system",
-                    "content": randomizer
-                }
-            ]
-            +
-            current_history
-    )
 
-    # ASSISTANT RESPONSE
-    try:
 
-        with st.chat_message(
-                "assistant",
-                avatar=ASSISTANT_AVATAR
-        ):
 
-            with st.spinner(
-                    "FinanceGPT is thinking..."
-            ):
 
-                response = chat_llm.invoke(messages)
 
-                assistant_reply = getattr(
-                    response,
-                    "content",
-                    str(response)
-                )
 
-                # SAVE ASSISTANT MESSAGE
-                save_message(
-                    st.session_state.conversation_id,
-                    "assistant",
-                    assistant_reply
-                )
+# from dotenv import load_dotenv
+# import streamlit as st
+# from langchain_groq import ChatGroq
+# import sqlite3
+# import uuid
+# import time
+# import random
+# import os
+# import pandas as pd
+# import matplotlib
+# from datetime import datetime
 
-                # STREAM RESPONSE
-                st.write_stream(
-                    typewriter(assistant_reply)
-                )
+# import pandasai as pai
+# from pandasai_litellm.litellm import LiteLLM
 
-    except Exception as e:
+# # ==================================================
+# # MATPLOTLIB
+# # ==================================================
+# matplotlib.use("Agg")
 
-        st.error(
-            f"LLM Error: {e}"
-        )
+# # ==================================================
+# # LOAD ENV VARIABLES
+# # ==================================================
+# load_dotenv()
+
+# # ==================================================
+# # PAGE CONFIG
+# # ==================================================
+# st.set_page_config(
+#     page_title="FinanceGPT",
+#     page_icon="?",
+#     layout="centered"
+# )
+
+# st.title("FinanceGPT")
+
+# # ==================================================
+# # DATABASE
+# # ==================================================
+# DB_NAME = "financegpt.db"
+
+# def get_connection():
+#     return sqlite3.connect(
+#         DB_NAME,
+#         check_same_thread=False
+#     )
+
+# def init_db():
+
+#     with get_connection() as conn:
+
+#         cursor = conn.cursor()
+
+#         cursor.execute("""
+#                        CREATE TABLE IF NOT EXISTS conversations (
+#                                                                     id TEXT PRIMARY KEY,
+#                                                                     title TEXT,
+#                                                                     created_at TEXT
+#                        )
+#                        """)
+
+#         cursor.execute("""
+#                        CREATE TABLE IF NOT EXISTS messages (
+#                                                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+#                                                                conversation_id TEXT,
+#                                                                role TEXT,
+#                                                                content TEXT,
+#                                                                timestamp TEXT
+#                        )
+#                        """)
+
+#         conn.commit()
+
+# init_db()
+
+# # ==================================================
+# # DATABASE HELPERS
+# # ==================================================
+# def create_conversation():
+
+#     conversation_id = str(uuid.uuid4())
+
+#     with get_connection() as conn:
+
+#         cursor = conn.cursor()
+
+#         cursor.execute(
+#             """
+#             INSERT INTO conversations
+#             VALUES (?, ?, ?)
+#             """,
+#             (
+#                 conversation_id,
+#                 "New Chat",
+#                 datetime.utcnow().isoformat()
+#             )
+#         )
+
+#         conn.commit()
+
+#     return conversation_id
+
+# def get_conversations():
+
+#     with get_connection() as conn:
+
+#         cursor = conn.cursor()
+
+#         cursor.execute("""
+#                        SELECT id, title
+#                        FROM conversations
+#                        ORDER BY created_at DESC
+#                        """)
+
+#         rows = cursor.fetchall()
+
+#     return rows
+
+# def get_messages(conversation_id):
+
+#     with get_connection() as conn:
+
+#         cursor = conn.cursor()
+
+#         cursor.execute(
+#             """
+#             SELECT role, content
+#             FROM messages
+#             WHERE conversation_id=?
+#             ORDER BY id ASC
+#             """,
+#             (conversation_id,)
+#         )
+
+#         rows = cursor.fetchall()
+
+#     return [
+#         {
+#             "role": role,
+#             "content": content
+#         }
+#         for role, content in rows
+#     ]
+
+# def save_message(conversation_id, role, content):
+
+#     with get_connection() as conn:
+
+#         cursor = conn.cursor()
+
+#         cursor.execute(
+#             """
+#             INSERT INTO messages
+#             VALUES (NULL, ?, ?, ?, ?)
+#             """,
+#             (
+#                 conversation_id,
+#                 role,
+#                 content,
+#                 datetime.utcnow().isoformat()
+#             )
+#         )
+
+#         conn.commit()
+
+# def update_title(conversation_id, text):
+
+#     with get_connection() as conn:
+
+#         cursor = conn.cursor()
+
+#         cursor.execute(
+#             """
+#             UPDATE conversations
+#             SET title=?
+#             WHERE id=?
+#             """,
+#             (
+#                 text[:40],
+#                 conversation_id
+#             )
+#         )
+
+#         conn.commit()
+
+# def delete_conversation(conversation_id):
+
+#     with get_connection() as conn:
+
+#         cursor = conn.cursor()
+
+#         cursor.execute(
+#             """
+#             DELETE FROM messages
+#             WHERE conversation_id=?
+#             """,
+#             (conversation_id,)
+#         )
+
+#         cursor.execute(
+#             """
+#             DELETE FROM conversations
+#             WHERE id=?
+#             """,
+#             (conversation_id,)
+#         )
+
+#         conn.commit()
+
+# # ==================================================
+# # SESSION STATE
+# # ==================================================
+# if "conversation_id" not in st.session_state:
+
+#     existing_chats = get_conversations()
+
+#     if existing_chats:
+
+#         st.session_state.conversation_id = existing_chats[0][0]
+
+#     else:
+
+#         st.session_state.conversation_id = create_conversation()
+
+# # ==================================================
+# # AVATARS
+# # ==================================================
+# USER_AVATAR = "?"
+# ASSISTANT_AVATAR = "?"
+
+# # ==================================================
+# # SIDEBAR
+# # ==================================================
+# with st.sidebar:
+
+#     st.header("? Chat History")
+
+#     if st.button("? New Chat"):
+
+#         st.session_state.conversation_id = create_conversation()
+#         st.rerun()
+
+#     chats = get_conversations()
+
+#     for cid, title in chats:
+
+#         if st.button(
+#                 f"? {title}",
+#                 key=f"chat_{cid}"
+#         ):
+
+#             st.session_state.conversation_id = cid
+#             st.rerun()
+
+#     st.divider()
+
+#     if st.button("? Delete Chat"):
+
+#         delete_conversation(
+#             st.session_state.conversation_id
+#         )
+
+#         remaining = get_conversations()
+
+#         if remaining:
+
+#             st.session_state.conversation_id = remaining[0][0]
+
+#         else:
+
+#             st.session_state.conversation_id = create_conversation()
+
+#         st.rerun()
+
+# # ==================================================
+# # LOAD CHAT HISTORY
+# # ==================================================
+# chat_history = get_messages(
+#     st.session_state.conversation_id
+# )
+
+# for message in chat_history:
+
+#     avatar = (
+#         USER_AVATAR
+#         if message["role"] == "user"
+#         else ASSISTANT_AVATAR
+#     )
+
+#     with st.chat_message(
+#             message["role"],
+#             avatar=avatar
+#     ):
+
+#         st.markdown(message["content"])
+
+# # ==================================================
+# # PANDASAI LLM
+# # ==================================================
+# pandas_llm = LiteLLM(
+#     model="groq/llama-3.3-70b-versatile",
+#     api_key=os.getenv("GROQ_API_KEY")
+# )
+
+# # ==================================================
+# # CHATBOT LLM
+# # ==================================================
+# chat_llm = ChatGroq(
+#     api_key=os.getenv("GROQ_API_KEY"),
+#     model="llama-3.1-8b-instant",
+#     temperature=0.7,
+#     model_kwargs={
+#         "top_p": 0.9
+#     }
+# )
+
+# # ==================================================
+# # PANDASAI CONFIG
+# # ==================================================
+# pai.config.set({
+#     "llm": pandas_llm,
+#     "verbose": False,
+#     "save_charts": False,
+#     "enable_cache": False
+# })
+
+# # ==================================================
+# # FILE UPLOADER
+# # ==================================================
+# st.sidebar.title("Financial Data Analysis")
+
+# uploaded_file = st.sidebar.file_uploader(
+#     "Upload CSV or Excel",
+#     type=["csv", "xlsx"]
+# )
+
+# df = None
+
+# if uploaded_file is not None:
+
+#     try:
+
+#         # READ FILE
+#         if uploaded_file.name.endswith(".csv"):
+
+#             pandas_df = pd.read_csv(uploaded_file)
+
+#         else:
+
+#             pandas_df = pd.read_excel(uploaded_file)
+
+#         # SHOW DATA
+#         st.subheader("Dataset Preview")
+
+#         st.dataframe(
+#             pandas_df.head()
+#         )
+
+#         # CREATE PANDASAI DATAFRAME
+#         df = pai.DataFrame(pandas_df)
+
+#     except Exception as e:
+
+#         st.error(
+#             f"Dataset Error: {e}"
+#         )
+
+# # ==================================================
+# # SYSTEM PROMPT
+# # KEEP YOUR ORIGINAL PROMPT HERE
+# # ==================================================
+# SYSTEM_PROMPT = """
+# PASTE YOUR ORIGINAL SYSTEM PROMPT HERE
+# """
+
+# # ==================================================
+# # TYPEWRITER EFFECT
+# # ==================================================
+# def typewriter(text, delay=0.012):
+
+#     for char in text:
+
+#         yield char
+#         time.sleep(delay)
+
+# # ==================================================
+# # DATA ANALYSIS SECTION
+# # ==================================================
+# if df is not None:
+
+#     st.divider()
+
+#     st.subheader("Financial Dataset Analysis")
+
+#     data_prompt = st.text_area(
+#         "Ask a question about your dataset"
+#     )
+
+#     if st.button("Generate Analysis"):
+
+#         if data_prompt:
+
+#             with st.spinner(
+#                     "FinanceGPT is analyzing data..."
+#             ):
+
+#                 try:
+
+#                     response = df.chat(data_prompt)
+
+#                     st.subheader("Analysis Result")
+
+#                     st.write(response)
+
+#                 except Exception as e:
+
+#                     st.error(
+#                         f"PandasAI Error: {e}"
+#                     )
+
+#         else:
+
+#             st.warning(
+#                 "Please enter a prompt."
+#             )
+
+# # ==================================================
+# # CHAT INPUT
+# # ==================================================
+# user_prompt = st.chat_input(
+#     "Ask FinanceGPT..."
+# )
+
+# if user_prompt:
+
+#     # USER MESSAGE
+#     with st.chat_message(
+#             "user",
+#             avatar=USER_AVATAR
+#     ):
+
+#         st.markdown(user_prompt)
+
+#     # SAVE USER MESSAGE
+#     save_message(
+#         st.session_state.conversation_id,
+#         "user",
+#         user_prompt
+#     )
+
+#     # REFRESH HISTORY
+#     current_history = get_messages(
+#         st.session_state.conversation_id
+#     )
+
+#     # UPDATE CHAT TITLE
+#     if len(current_history) <= 1:
+
+#         update_title(
+#             st.session_state.conversation_id,
+#             user_prompt
+#         )
+
+#     # RANDOMIZER
+#     randomizer = (
+#         f"(response_variation:"
+#         f" {random.randint(1, 999999)})"
+#     )
+
+#     # BUILD MESSAGE LIST
+#     messages = (
+#             [
+#                 {
+#                     "role": "system",
+#                     "content": SYSTEM_PROMPT
+#                 },
+#                 {
+#                     "role": "system",
+#                     "content": randomizer
+#                 }
+#             ]
+#             +
+#             current_history
+#     )
+
+#     # ASSISTANT RESPONSE
+#     try:
+
+#         with st.chat_message(
+#                 "assistant",
+#                 avatar=ASSISTANT_AVATAR
+#         ):
+
+#             with st.spinner(
+#                     "FinanceGPT is thinking..."
+#             ):
+
+#                 response = chat_llm.invoke(messages)
+
+#                 assistant_reply = getattr(
+#                     response,
+#                     "content",
+#                     str(response)
+#                 )
+
+#                 # SAVE ASSISTANT MESSAGE
+#                 save_message(
+#                     st.session_state.conversation_id,
+#                     "assistant",
+#                     assistant_reply
+#                 )
+
+#                 # STREAM RESPONSE
+#                 st.write_stream(
+#                     typewriter(assistant_reply)
+#                 )
+
+#     except Exception as e:
+
+#         st.error(
+#             f"LLM Error: {e}"
+#         )
 
 
 
