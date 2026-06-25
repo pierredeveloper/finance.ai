@@ -602,10 +602,9 @@ def extract_and_save_memories(conversation: list):
         for msg in conversation
     ])
 
-    prompt = MEMORY_EXTRACTION_PROMPT.format(
-        existing_memory=existing_text,
-        conversation=convo_text
-    )
+    prompt = (MEMORY_EXTRACTION_PROMPT
+              .replace("{existing_memory}", existing_text)
+              .replace("{conversation}", convo_text))
 
     try:
         response = llm.invoke([{"role": "user", "content": prompt}])
