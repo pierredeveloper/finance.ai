@@ -6,7 +6,6 @@ import uuid
 import time
 import random
 import os
-import json
 from datetime import datetime
 
 # --------------------------------------------------
@@ -23,7 +22,7 @@ st.set_page_config(
 st.title("FinanceGPT")
 
 # --------------------------------------------------
-# SYSTEM PROMPT
+# SYSTEM PROMPT (ChatGPT STYLE)
 # --------------------------------------------------
 
 SYSTEM_PROMPT = """
@@ -268,7 +267,7 @@ When the user is learning:
 - Use practical business examples
 - Explain terminology clearly
 - Avoid unnecessary jargon unless requested
-- Teach both "how" and "why"
+- Teach both “how” and “why”
 
 # ADVANCED CAPABILITIES
 
@@ -354,43 +353,6 @@ You should function like a highly experienced:
 while remaining clear, educational, practical, and trustworthy.
 """
 
-# --------------------------------------------------
-# MEMORY EXTRACTION PROMPT
-# --------------------------------------------------
-MEMORY_EXTRACTION_PROMPT = """You are a memory extraction assistant for FinanceGPT, a financial AI assistant.
-
-Your job is to read a conversation and extract important facts about the USER that should be remembered for future sessions.
-
-Focus ONLY on persistent, reusable facts such as:
-- User's name or role (e.g., "CFO at Acme Corp", "accounting student", "small business owner")
-- Company name, industry, size, or revenue range
-- Accounting standards they use (GAAP, IFRS)
-- Recurring financial topics or goals (e.g., "preparing for Series A", "monthly cash flow issues")
-- Software or tools they use (e.g., QuickBooks, SAP, Excel)
-- Currency or country context
-- Specific financial challenges or projects mentioned
-- Preferences for response format or depth
-
-DO NOT extract:
-- Specific numbers or one-time data points that will change
-- General finance questions unrelated to the user's context
-- Anything already captured in existing memory
-
-Return a JSON object with this structure:
-{
-  "memories": [
-    {"key": "short_unique_key", "value": "fact about the user", "category": "role|company|tools|goals|preferences|context"}
-  ]
-}
-
-If there is nothing new worth remembering, return: {"memories": []}
-
-Existing memory (do not duplicate):
-{existing_memory}
-
-Conversation to analyze:
-{conversation}
-"""
 
 # --------------------------------------------------
 # AVATARS
@@ -399,7 +361,7 @@ USER_AVATAR = "🧑‍💻"
 ASSISTANT_AVATAR = "🤖"
 
 # --------------------------------------------------
-# DATABASE
+# DATABASE (PERMANENT MEMORY)
 # --------------------------------------------------
 DB_NAME = "chatgpt_clone.db"
 
@@ -428,24 +390,13 @@ def init_db():
         )
     """)
 
-    # Long-term memory table
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS user_memory (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            memory_key TEXT UNIQUE,
-            memory_value TEXT,
-            category TEXT,
-            updated_at TEXT
-        )
-    """)
-
     conn.commit()
     conn.close()
 
 init_db()
 
 # --------------------------------------------------
-# DB HELPERS — Conversations & Messages
+# DB HELPERS
 # --------------------------------------------------
 def create_conversation():
     cid = str(uuid.uuid4())
@@ -507,137 +458,14 @@ def delete_conversation(cid):
     conn.close()
 
 # --------------------------------------------------
-# DB HELPERS — Long-Term Memory
-# --------------------------------------------------
-def get_all_memories():
-    conn = get_conn()
-    c = conn.cursor()
-    c.execute("SELECT id, memory_key, memory_value, category, updated_at FROM user_memory ORDER BY category, updated_at DESC")
-    rows = c.fetchall()
-    conn.close()
-    return rows
-
-def save_memories(memories: list):
-    """Upsert a list of {key, value, category} dicts."""
-    if not memories:
-        return
-    conn = get_conn()
-    c = conn.cursor()
-    for m in memories:
-        c.execute("""
-            INSERT INTO user_memory (memory_key, memory_value, category, updated_at)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT(memory_key) DO UPDATE SET
-                memory_value=excluded.memory_value,
-                category=excluded.category,
-                updated_at=excluded.updated_at
-        """, (m["key"], m["value"], m.get("category", "context"), datetime.utcnow().isoformat()))
-    conn.commit()
-    conn.close()
-
-def delete_memory(memory_id: int):
-    conn = get_conn()
-    c = conn.cursor()
-    c.execute("DELETE FROM user_memory WHERE id=?", (memory_id,))
-    conn.commit()
-    conn.close()
-
-def clear_all_memories():
-    conn = get_conn()
-    c = conn.cursor()
-    c.execute("DELETE FROM user_memory")
-    conn.commit()
-    conn.close()
-
-def build_memory_context() -> str:
-    """Format memories as a context block for the system prompt."""
-    memories = get_all_memories()
-    if not memories:
-        return ""
-
-    lines = ["# WHAT I KNOW ABOUT YOU (Long-Term Memory)\n"]
-    categories = {}
-    for _, key, value, category, _ in memories:
-        categories.setdefault(category, []).append(value)
-
-    category_labels = {
-        "role": "👤 Your Role",
-        "company": "🏢 Company / Organization",
-        "tools": "🛠 Tools & Software",
-        "goals": "🎯 Financial Goals & Projects",
-        "preferences": "⚙️ Preferences",
-        "context": "📌 Context",
-    }
-
-    for cat, items in categories.items():
-        label = category_labels.get(cat, cat.title())
-        lines.append(f"## {label}")
-        for item in items:
-            lines.append(f"- {item}")
-        lines.append("")
-
-    lines.append("Use this context to personalize your answers. Do not repeat these facts back to the user unnecessarily — just apply them naturally.")
-    return "\n".join(lines)
-
-# --------------------------------------------------
-# LLM
-# --------------------------------------------------
-llm = ChatGroq(
-    api_key=os.getenv("GROQ_API_KEY"),
-    model="llama-3.3-70b-versatile",
-    temperature=0.7,
-    model_kwargs={"top_p": 0.9}
-)
-
-# --------------------------------------------------
-# MEMORY EXTRACTION
-# --------------------------------------------------
-def extract_and_save_memories(conversation: list):
-    """Call LLM to extract new memories from the latest conversation."""
-    existing = get_all_memories()
-    existing_text = "\n".join([f"- [{cat}] {val}" for _, _, val, cat, _ in existing]) or "None yet."
-
-    convo_text = "\n".join([
-        f"{msg['role'].upper()}: {msg['content']}"
-        for msg in conversation
-    ])
-
-    prompt = (MEMORY_EXTRACTION_PROMPT
-              .replace("{existing_memory}", existing_text)
-              .replace("{conversation}", convo_text))
-
-    try:
-        response = llm.invoke([{"role": "user", "content": prompt}])
-        raw = response.content.strip()
-
-        # Strip markdown fences if present
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-        raw = raw.strip()
-
-        data = json.loads(raw)
-        memories = data.get("memories", [])
-        if memories:
-            save_memories(memories)
-            return len(memories)
-    except Exception as e:
-        pass  # Silently fail — memory extraction is best-effort
-    return 0
-
-# --------------------------------------------------
 # SESSION STATE
 # --------------------------------------------------
 if "conversation_id" not in st.session_state:
     chats = get_conversations()
     st.session_state.conversation_id = chats[0][0] if chats else create_conversation()
 
-if "show_memory_panel" not in st.session_state:
-    st.session_state.show_memory_panel = False
-
 # --------------------------------------------------
-# SIDEBAR
+# SIDEBAR (CHATGPT STYLE)
 # --------------------------------------------------
 with st.sidebar:
     st.header("🗂 Chat History")
@@ -662,69 +490,6 @@ with st.sidebar:
         )
         st.rerun()
 
-    st.divider()
-
-    # Memory panel toggle
-    memory_count = len(get_all_memories())
-    mem_label = f"🧠 Memory ({memory_count})"
-    if st.button(mem_label):
-        st.session_state.show_memory_panel = not st.session_state.show_memory_panel
-        st.rerun()
-
-# --------------------------------------------------
-# MEMORY PANEL
-# --------------------------------------------------
-if st.session_state.show_memory_panel:
-    with st.expander("🧠 Long-Term Memory", expanded=True):
-        st.caption("FinanceGPT remembers these facts about you across all conversations.")
-
-        memories = get_all_memories()
-
-        if not memories:
-            st.info("No memories saved yet. As you chat, FinanceGPT will learn about you and your business.")
-        else:
-            category_labels = {
-                "role": "👤 Role",
-                "company": "🏢 Company",
-                "tools": "🛠 Tools",
-                "goals": "🎯 Goals",
-                "preferences": "⚙️ Preferences",
-                "context": "📌 Context",
-            }
-
-            # Group by category
-            by_category = {}
-            for mem_id, key, value, category, updated_at in memories:
-                by_category.setdefault(category, []).append((mem_id, key, value, updated_at))
-
-            for cat, items in by_category.items():
-                st.markdown(f"**{category_labels.get(cat, cat.title())}**")
-                for mem_id, key, value, updated_at in items:
-                    col1, col2 = st.columns([5, 1])
-                    with col1:
-                        st.markdown(f"• {value}")
-                    with col2:
-                        if st.button("✕", key=f"del_{mem_id}"):
-                            delete_memory(mem_id)
-                            st.rerun()
-
-        st.divider()
-
-        # Manual memory addition
-        new_memory = st.text_input("Add a memory manually:", placeholder="e.g. I'm the CFO of a SaaS company")
-        mem_category = st.selectbox("Category", ["context", "role", "company", "tools", "goals", "preferences"])
-        if st.button("💾 Save memory") and new_memory.strip():
-            key = f"manual_{uuid.uuid4().hex[:8]}"
-            save_memories([{"key": key, "value": new_memory.strip(), "category": mem_category}])
-            st.success("Memory saved!")
-            st.rerun()
-
-        st.divider()
-        if st.button("🗑 Clear all memories", type="secondary"):
-            clear_all_memories()
-            st.success("All memories cleared.")
-            st.rerun()
-
 # --------------------------------------------------
 # LOAD CHAT HISTORY
 # --------------------------------------------------
@@ -734,6 +499,17 @@ for msg in chat_history:
     avatar = USER_AVATAR if msg["role"] == "user" else ASSISTANT_AVATAR
     with st.chat_message(msg["role"], avatar=avatar):
         st.markdown(msg["content"])
+
+# --------------------------------------------------
+# LLM
+# --------------------------------------------------
+llm = ChatGroq(
+    api_key=os.getenv("GROQ_API_KEY"),
+    model="llama-3.3-70b-versatile",
+    #model="llama-3.1-8b-instant",
+    temperature=0.7,
+    model_kwargs={"top_p": 0.9}
+)
 
 # --------------------------------------------------
 # TYPING EFFECT
@@ -759,14 +535,8 @@ if user_prompt:
 
     randomizer = f"(response_variation: {random.randint(1, 999999)})"
 
-    # Build system prompt with long-term memory injected
-    memory_context = build_memory_context()
-    full_system_prompt = SYSTEM_PROMPT
-    if memory_context:
-        full_system_prompt = memory_context + "\n\n---\n\n" + SYSTEM_PROMPT
-
     messages = (
-        [{"role": "system", "content": full_system_prompt},
+        [{"role": "system", "content": SYSTEM_PROMPT},
          {"role": "system", "content": randomizer}]
         + chat_history
         + [{"role": "user", "content": user_prompt}]
@@ -783,580 +553,6 @@ if user_prompt:
 
     with st.chat_message("assistant", avatar=ASSISTANT_AVATAR):
         st.write_stream(typewriter(assistant_reply))
-
-    # Extract memories from this exchange (run in background after reply)
-    current_exchange = chat_history + [
-        {"role": "user", "content": user_prompt},
-        {"role": "assistant", "content": assistant_reply}
-    ]
-    new_memory_count = extract_and_save_memories(current_exchange)
-    if new_memory_count > 0:
-        st.toast(f"🧠 {new_memory_count} new memory item(s) saved!", icon="🧠")
-
-
-
-
-
-
-
-
-
-
-# from dotenv import load_dotenv
-# import streamlit as st
-# from langchain_groq import ChatGroq
-# import sqlite3
-# import uuid
-# import time
-# import random
-# import os
-# from datetime import datetime
-
-# # --------------------------------------------------
-# # ENV + PAGE CONFIG
-# # --------------------------------------------------
-# load_dotenv()
-
-# st.set_page_config(
-#     page_title="FinanceGPT",
-#     page_icon="logo icon.png",
-#     layout="centered"
-# )
-
-# st.title("FinanceGPT")
-
-# # --------------------------------------------------
-# # SYSTEM PROMPT (ChatGPT STYLE)
-# # --------------------------------------------------
-
-# SYSTEM_PROMPT = """
-# You are an elite Financial Accounting, Analysis, Data Scientist Expert AI assistant called FinanceGPT with deep expertise in accounting, corporate finance, financial analysis, auditing, budgeting, forecasting, and business strategy.
-
-# Your primary objective is to provide accurate, structured, practical, and insightful financial guidance, analysis, and explanations for businesses, investors, students, analysts, entrepreneurs, and executives.
-
-# # CORE ROLE
-
-# You act as:
-# - A Financial Accountant
-# - A Financial Analyst
-# - A Financial Data Scientist
-# - An FP&A Specialist
-# - A Corporate Finance Advisor
-# - A Budgeting and Forecasting Expert
-# - A Financial Reporting Specialist
-# - A Risk Assessment Analyst
-# - A Business Performance Analyst
-# - A Financial Decision Support Assistant
-
-# You help users:
-# - Understand financial concepts
-# - Record and interpret financial transactions
-# - Analyze financial statements
-# - Evaluate company performance
-# - Build forecasts and budgets
-# - Assess profitability and risk
-# - Support investment and business decisions
-# - Improve financial operations and reporting
-
-# # CORE RESPONSIBILITIES
-
-# ## 1. Financial Accounting
-# You must:
-# - Explain accounting principles clearly
-# - Record journal entries accurately
-# - Classify assets, liabilities, equity, revenue, and expenses
-# - Prepare and interpret:
-#   - Income Statements
-#   - Balance Sheets
-#   - Cash Flow Statements
-#   - Trial Balances
-#   - General Ledgers
-# - Follow accounting standards:
-#   - GAAP
-#   - IFRS
-
-# When analyzing transactions:
-# - Identify affected accounts
-# - Determine debit and credit impacts
-# - Explain accounting logic step-by-step
-
-# ## 2. Financial Analysis
-# You must:
-# - Analyze financial performance
-# - Evaluate company profitability
-# - Assess liquidity, solvency, and efficiency
-# - Calculate and interpret financial ratios
-# - Compare historical performance trends
-# - Identify strengths, weaknesses, risks, and opportunities
-
-# You should analyze:
-# - Revenue growth
-# - Gross profit margins
-# - Operating margins
-# - Net income
-# - Cash flow health
-# - Debt levels
-# - Working capital
-# - Operational efficiency
-
-# Common ratios include:
-# - Current Ratio
-# - Quick Ratio
-# - Debt-to-Equity Ratio
-# - Gross Margin
-# - Net Profit Margin
-# - Return on Assets (ROA)
-# - Return on Equity (ROE)
-# - Earnings Per Share (EPS)
-
-# ## 3. Financial Data Scientist
-
-# You must:
-# - Analyze large-scale financial datasets
-# - Identify patterns, anomalies, and business trends
-# - Build predictive financial models
-# - Perform statistical and quantitative analysis
-# - Use machine learning techniques when appropriate
-# - Interpret structured and unstructured financial data
-# - Support data-driven financial decision-making
-# - Combine finance expertise with data science methodologies
-
-# You should be able to:
-# - Clean and preprocess financial datasets
-# - Detect forecasting trends and outliers
-# - Perform predictive revenue and expense analysis
-# - Analyze customer, operational, and market behavior
-# - Build KPI and financial intelligence dashboards
-# - Evaluate model performance and reliability
-# - Explain analytical findings in business terms
-
-# You may use:
-# - Python
-# - SQL
-# - Pandas
-# - NumPy
-# - Scikit-learn
-# - Power BI
-# - Tableau
-# - Excel
-
-# When performing financial data analysis:
-# - Clearly explain assumptions and methodologies
-# - Distinguish correlation from causation
-# - Highlight limitations of models and predictions
-# - Avoid overconfidence in uncertain forecasts
-# - Present insights in a business-friendly format
-
-# For predictive tasks:
-# - State confidence levels where possible
-# - Explain important variables and drivers
-# - Identify potential risks and data quality issues
-# - Recommend actionable next steps based on findings
-
-# ## 4. Budgeting & Forecasting
-# You must:
-# - Create financial forecasts
-# - Build budgeting models
-# - Estimate future revenues and expenses
-# - Perform scenario analysis
-# - Support strategic planning
-# - Identify financial trends
-
-# When forecasting:
-# - State assumptions clearly
-# - Explain methodologies used
-# - Highlight uncertainty and risk factors
-
-# ## 5. Decision Support
-# You must:
-# - Provide business-oriented financial insights
-# - Evaluate investments and projects
-# - Assist with cost-benefit analysis
-# - Support pricing decisions
-# - Assess expansion opportunities
-# - Analyze operational performance
-
-# You should:
-# - Explain reasoning clearly
-# - Present alternatives when appropriate
-# - Quantify financial impact whenever possible
-
-# ## 6. Risk Assessment
-# You must identify:
-# - Liquidity risks
-# - Profitability concerns
-# - Debt-related risks
-# - Cash flow issues
-# - Operational inefficiencies
-# - Financial inconsistencies
-# - Potential fraud indicators
-
-# You should recommend:
-# - Risk mitigation strategies
-# - Internal controls
-# - Cost reduction opportunities
-# - Financial improvements
-
-# ## 7. Compliance & Reporting
-# You must:
-# - Promote ethical accounting practices
-# - Support accurate financial reporting
-# - Explain audit-related concepts
-# - Encourage regulatory compliance
-# - Emphasize transparency and documentation
-
-# Never:
-# - Encourage fraud
-# - Manipulate financial statements
-# - Conceal liabilities or losses
-# - Provide illegal tax evasion strategies
-
-# # RESPONSE STYLE
-
-# Your responses must be:
-# - Professional
-# - Precise
-# - Structured
-# - Analytical
-# - Data-driven
-# - Clear for both technical and non-technical audiences
-
-# Always:
-# - Break down complex concepts step-by-step
-# - Use tables when useful
-# - Explain formulas and calculations
-# - Provide examples
-# - Distinguish facts from assumptions
-# - Clarify uncertainty when data is incomplete
-
-# # ANALYTICAL FRAMEWORK
-
-# For financial analysis tasks:
-# 1. Understand the business context
-# 2. Identify key financial metrics
-# 3. Analyze trends and relationships
-# 4. Evaluate risks and opportunities
-# 5. Provide actionable insights
-# 6. Summarize findings clearly
-
-# # WHEN WORKING WITH FINANCIAL STATEMENTS
-
-# Always:
-# - Cross-check consistency between statements
-# - Identify anomalies and unusual movements
-# - Compare periods where possible
-# - Explain what changes may indicate operationally
-
-# # WHEN PROVIDING CALCULATIONS
-
-# You must:
-# - Show formulas
-# - Show calculation steps
-# - Explain financial meaning
-# - State assumptions
-# - Verify numerical accuracy
-
-# # HANDLING MISSING DATA
-
-# If information is incomplete:
-# - State what is missing
-# - Make reasonable assumptions only when necessary
-# - Clearly label assumptions
-# - Explain how missing data affects confidence
-
-# # TEACHING MODE
-
-# When the user is learning:
-# - Simplify explanations gradually
-# - Use practical business examples
-# - Explain terminology clearly
-# - Avoid unnecessary jargon unless requested
-# - Teach both “how” and “why”
-
-# # ADVANCED CAPABILITIES
-
-# You can assist with:
-# - Financial modeling
-# - Ratio analysis
-# - Variance analysis
-# - Break-even analysis
-# - Cash flow analysis
-# - Cost accounting
-# - Investment analysis
-# - Corporate valuation concepts
-# - Scenario planning
-# - KPI development
-# - Performance dashboards
-# - Expense optimization
-# - Strategic finance planning
-
-# # OUTPUT PREFERENCES
-
-# When appropriate:
-# - Use bullet points for clarity
-# - Use financial tables
-# - Summarize key insights
-# - Highlight critical risks
-# - Provide recommendations
-# - Include executive summaries for large analyses
-# - Use structured formatting when helpful.
-# - Use examples where they improve understanding.
-# - Provide step-by-step instructions for technical tasks.
-# - Keep responses focused on solving the user's actual goal.
-
-# # BEHAVIOR GUIDELINES
-
-# - Be clear, concise, and practical.
-# - Prioritize correctness, reasoning quality, and usability.
-# - Break down complex problems into manageable steps.
-# - When solving difficult tasks:
-#   1. Decompose the problem.
-#   2. Solve subproblems methodically.
-#   3. Verify logic, assumptions, and completeness.
-#   4. Combine results into a coherent final answer.
-#   5. Reflect and refine if confidence is low.
-# - Avoid unnecessary jargon unless appropriate for the user.
-# - Adapt explanations to the user's experience level.
-# - Ask clarifying questions only when required information is missing.
-# - Prefer actionable guidance over vague suggestions.
-# - Maintain a professional, collaborative, and supportive tone.
-# - Never fabricate facts, sources, or capabilities.
-# - Acknowledge uncertainty when necessary.
-
-# # IMPORTANT CONSTRAINTS
-
-# Never:
-# - Fabricate financial data
-# - Present estimates as facts
-# - Provide legal or licensed investment advice as guaranteed outcomes
-# - Ignore accounting standards
-# - Produce misleading interpretations
-
-# Always:
-# - Maintain analytical neutrality
-# - Emphasize accuracy
-# - Encourage verification for high-stakes financial decisions
-
-# # PRIMARY OBJECTIVE
-
-# Your mission is to help users:
-# - Understand finance and accounting deeply
-# - Make informed financial decisions
-# - Improve financial performance
-# - Interpret business health accurately
-# - Build financially sustainable strategies
-
-# You should function like a highly experienced:
-# - CPA
-# - CFA
-# - FP&A Manager
-# - Corporate Finance Consultant
-# - Senior Financial Analyst
-# - Audit & Reporting Specialist
-
-# while remaining clear, educational, practical, and trustworthy.
-# """
-
-
-# # --------------------------------------------------
-# # AVATARS
-# # --------------------------------------------------
-# USER_AVATAR = "🧑‍💻"
-# ASSISTANT_AVATAR = "🤖"
-
-# # --------------------------------------------------
-# # DATABASE (PERMANENT MEMORY)
-# # --------------------------------------------------
-# DB_NAME = "chatgpt_clone.db"
-
-# def get_conn():
-#     return sqlite3.connect(DB_NAME, check_same_thread=False)
-
-# def init_db():
-#     conn = get_conn()
-#     c = conn.cursor()
-
-#     c.execute("""
-#         CREATE TABLE IF NOT EXISTS conversations (
-#             id TEXT PRIMARY KEY,
-#             title TEXT,
-#             created_at TEXT
-#         )
-#     """)
-
-#     c.execute("""
-#         CREATE TABLE IF NOT EXISTS messages (
-#             id INTEGER PRIMARY KEY AUTOINCREMENT,
-#             conversation_id TEXT,
-#             role TEXT,
-#             content TEXT,
-#             timestamp TEXT
-#         )
-#     """)
-
-#     conn.commit()
-#     conn.close()
-
-# init_db()
-
-# # --------------------------------------------------
-# # DB HELPERS
-# # --------------------------------------------------
-# def create_conversation():
-#     cid = str(uuid.uuid4())
-#     conn = get_conn()
-#     c = conn.cursor()
-#     c.execute(
-#         "INSERT INTO conversations VALUES (?, ?, ?)",
-#         (cid, "New chat", datetime.utcnow().isoformat())
-#     )
-#     conn.commit()
-#     conn.close()
-#     return cid
-
-# def get_conversations():
-#     conn = get_conn()
-#     c = conn.cursor()
-#     c.execute("SELECT id, title FROM conversations ORDER BY created_at DESC")
-#     rows = c.fetchall()
-#     conn.close()
-#     return rows
-
-# def get_messages(cid):
-#     conn = get_conn()
-#     c = conn.cursor()
-#     c.execute(
-#         "SELECT role, content FROM messages WHERE conversation_id=? ORDER BY id ASC",
-#         (cid,)
-#     )
-#     rows = c.fetchall()
-#     conn.close()
-#     return [{"role": r, "content": c} for r, c in rows]
-
-# def save_message(cid, role, content):
-#     conn = get_conn()
-#     c = conn.cursor()
-#     c.execute(
-#         "INSERT INTO messages VALUES (NULL, ?, ?, ?, ?)",
-#         (cid, role, content, datetime.utcnow().isoformat())
-#     )
-#     conn.commit()
-#     conn.close()
-
-# def update_title(cid, text):
-#     conn = get_conn()
-#     c = conn.cursor()
-#     c.execute(
-#         "UPDATE conversations SET title=? WHERE id=?",
-#         (text[:40], cid)
-#     )
-#     conn.commit()
-#     conn.close()
-
-# def delete_conversation(cid):
-#     conn = get_conn()
-#     c = conn.cursor()
-#     c.execute("DELETE FROM messages WHERE conversation_id=?", (cid,))
-#     c.execute("DELETE FROM conversations WHERE id=?", (cid,))
-#     conn.commit()
-#     conn.close()
-
-# # --------------------------------------------------
-# # SESSION STATE
-# # --------------------------------------------------
-# if "conversation_id" not in st.session_state:
-#     chats = get_conversations()
-#     st.session_state.conversation_id = chats[0][0] if chats else create_conversation()
-
-# # --------------------------------------------------
-# # SIDEBAR (CHATGPT STYLE)
-# # --------------------------------------------------
-# with st.sidebar:
-#     st.header("🗂 Chat History")
-
-#     if st.button("➕ New chat"):
-#         st.session_state.conversation_id = create_conversation()
-#         st.rerun()
-
-#     chats = get_conversations()
-#     for cid, title in chats:
-#         if st.button(title, key=cid):
-#             st.session_state.conversation_id = cid
-#             st.rerun()
-
-#     st.divider()
-
-#     if st.button("🗑 Delete chat"):
-#         delete_conversation(st.session_state.conversation_id)
-#         remaining = get_conversations()
-#         st.session_state.conversation_id = (
-#             remaining[0][0] if remaining else create_conversation()
-#         )
-#         st.rerun()
-
-# # --------------------------------------------------
-# # LOAD CHAT HISTORY
-# # --------------------------------------------------
-# chat_history = get_messages(st.session_state.conversation_id)
-
-# for msg in chat_history:
-#     avatar = USER_AVATAR if msg["role"] == "user" else ASSISTANT_AVATAR
-#     with st.chat_message(msg["role"], avatar=avatar):
-#         st.markdown(msg["content"])
-
-# # --------------------------------------------------
-# # LLM
-# # --------------------------------------------------
-# llm = ChatGroq(
-#     api_key=os.getenv("GROQ_API_KEY"),
-#     model="llama-3.3-70b-versatile",
-#     #model="llama-3.1-8b-instant",
-#     temperature=0.7,
-#     model_kwargs={"top_p": 0.9}
-# )
-
-# # --------------------------------------------------
-# # TYPING EFFECT
-# # --------------------------------------------------
-# def typewriter(text, delay=0.01):
-#     for char in text:
-#         yield char
-#         time.sleep(delay)
-
-# # --------------------------------------------------
-# # USER INPUT
-# # --------------------------------------------------
-# user_prompt = st.chat_input("Ask Chatbot...")
-
-# if user_prompt:
-#     with st.chat_message("user", avatar=USER_AVATAR):
-#         st.markdown(user_prompt)
-
-#     save_message(st.session_state.conversation_id, "user", user_prompt)
-
-#     if len(chat_history) == 0:
-#         update_title(st.session_state.conversation_id, user_prompt)
-
-#     randomizer = f"(response_variation: {random.randint(1, 999999)})"
-
-#     messages = (
-#         [{"role": "system", "content": SYSTEM_PROMPT},
-#          {"role": "system", "content": randomizer}]
-#         + chat_history
-#         + [{"role": "user", "content": user_prompt}]
-#     )
-
-#     response = llm.invoke(messages)
-#     assistant_reply = response.content
-
-#     save_message(
-#         st.session_state.conversation_id,
-#         "assistant",
-#         assistant_reply
-#     )
-
-#     with st.chat_message("assistant", avatar=ASSISTANT_AVATAR):
-#         st.write_stream(typewriter(assistant_reply))
 
 
 
